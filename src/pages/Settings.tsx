@@ -22,6 +22,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SyncSettings } from '@/components/SyncSettings';
 import { IntegrationSettings } from '@/components/IntegrationSettings';
+import { PushNotificationSettings } from '@/components/PushNotificationSettings';
 
 const Settings = () => {
   const { toast } = useToast();
@@ -145,6 +146,9 @@ const Settings = () => {
         <div className="max-w-2xl mx-auto space-y-6">
           {/* Cloud Sync Section */}
           <SyncSettings />
+          
+          {/* Push Notifications Section */}
+          <PushNotificationSettings />
           
           {/* Integrations Section */}
           <IntegrationSettings variant="notes" />
