@@ -6,8 +6,7 @@ import { BottomNavigation } from '@/components/BottomNavigation';
 import { PersonalizedTips } from '@/components/PersonalizedTips';
 import { FolderManager } from '@/components/FolderManager';
 import { SyncBadge } from '@/components/SyncStatusIndicator';
-import { useRealtimeSync } from '@/hooks/useRealtimeSync';
-import { syncManager } from '@/utils/syncManager';
+import { useFirebaseSync } from '@/hooks/useFirebaseSync';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -37,8 +36,7 @@ const Index = () => {
   const [defaultType, setDefaultType] = useState<NoteType>('regular');
   const [draggedNoteId, setDraggedNoteId] = useState<string | null>(null);
   const [upcomingReminders, setUpcomingReminders] = useState<any[]>([]);
-  const { isOnline, isSyncing, hasError, lastSync } = useRealtimeSync();
-  const syncEnabled = syncManager.isSyncEnabled();
+  const { isOnline, isSyncing, hasError, lastSync, syncEnabled, triggerAutoSync } = useFirebaseSync();
 
   // Check onboarding status on mount
   useEffect(() => {
@@ -82,11 +80,19 @@ const Index = () => {
 
   useEffect(() => {
     localStorage.setItem('notes', JSON.stringify(notes));
-  }, [notes]);
+    // Trigger auto-sync when notes change
+    if (notes.length > 0) {
+      triggerAutoSync();
+    }
+  }, [notes, triggerAutoSync]);
 
   useEffect(() => {
     localStorage.setItem('folders', JSON.stringify(folders));
-  }, [folders]);
+    // Trigger auto-sync when folders change
+    if (folders.length > 0) {
+      triggerAutoSync();
+    }
+  }, [folders, triggerAutoSync]);
 
   useEffect(() => {
     const loadReminders = async () => {

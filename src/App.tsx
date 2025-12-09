@@ -9,6 +9,7 @@ import Notes from "./pages/Notes";
 import NotesCalendar from "./pages/NotesCalendar";
 import Settings from "./pages/Settings";
 import Reminders from "./pages/Reminders";
+import Auth from "./pages/Auth";
 import Today from "./pages/todo/Today";
 import Upcoming from "./pages/todo/Upcoming";
 import TodoCalendar from "./pages/todo/TodoCalendar";
@@ -21,7 +22,6 @@ const queryClient = new QueryClient();
 
 const AppContent = () => {
   useEffect(() => {
-    // Initialize notification system
     notificationManager.initialize().catch(console.error);
   }, []);
 
@@ -36,6 +36,7 @@ const AppContent = () => {
           <Route path="/calendar" element={<NotesCalendar />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/reminders" element={<Reminders />} />
+          <Route path="/auth" element={<Auth />} />
           <Route path="/todo/today" element={<Today />} />
           <Route path="/todo/upcoming" element={<Upcoming />} />
           <Route path="/todo/calendar" element={<TodoCalendar />} />

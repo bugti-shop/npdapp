@@ -1,22 +1,29 @@
-import { Cloud, CloudOff, RefreshCw, Download, CheckCircle, AlertCircle } from 'lucide-react';
+import { Cloud, CloudOff, RefreshCw, Download, CheckCircle, AlertCircle, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFirebaseSync } from '@/hooks/useFirebaseSync';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 
 export const SyncSettings = () => {
+  const navigate = useNavigate();
   const {
     isOnline,
     isSyncing,
     hasError,
     syncEnabled,
+    autoSyncEnabled,
     lastSync,
+    isAuthenticated,
+    userEmail,
     enableSync,
     disableSync,
+    setAutoSync,
     manualSync,
     pullData,
+    signOut,
   } = useFirebaseSync();
   const { toast } = useToast();
 
@@ -59,7 +66,6 @@ export const SyncSettings = () => {
         title: "Data Downloaded",
         description: "Latest data has been downloaded from cloud.",
       });
-      // Reload to show updated data
       window.location.reload();
     } else {
       toast({
@@ -69,6 +75,36 @@ export const SyncSettings = () => {
       });
     }
   };
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast({
+      title: "Signed Out",
+      description: "You have been signed out successfully.",
+    });
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CloudOff className="h-5 w-5 text-muted-foreground" />
+            Cloud Sync
+          </CardTitle>
+          <CardDescription>
+            Sign in to sync your notes, folders, and todos across all your Android devices
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={() => navigate('/auth')} className="w-full">
+            <User className="h-4 w-4 mr-2" />
+            Sign In to Enable Sync
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -86,6 +122,17 @@ export const SyncSettings = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* User Info */}
+        <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+          <div className="flex items-center gap-2">
+            <User className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm">{userEmail}</span>
+          </div>
+          <Button variant="ghost" size="sm" onClick={handleSignOut}>
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
+
         {/* Connection Status */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -110,7 +157,7 @@ export const SyncSettings = () => {
           <div>
             <p className="text-sm font-medium">Enable Cloud Sync</p>
             <p className="text-xs text-muted-foreground">
-              Automatically sync data in real-time
+              Sync data in real-time across devices
             </p>
           </div>
           <Switch
@@ -119,6 +166,23 @@ export const SyncSettings = () => {
             disabled={isSyncing || !isOnline}
           />
         </div>
+
+        {/* Auto-sync Toggle */}
+        {syncEnabled && (
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Auto-sync on changes</p>
+              <p className="text-xs text-muted-foreground">
+                Automatically sync when you edit notes or todos
+              </p>
+            </div>
+            <Switch
+              checked={autoSyncEnabled}
+              onCheckedChange={setAutoSync}
+              disabled={isSyncing}
+            />
+          </div>
+        )}
 
         {/* Sync Buttons */}
         {syncEnabled && (
