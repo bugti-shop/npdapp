@@ -14,6 +14,10 @@ const config: CapacitorConfig = {
       iconColor: "#488AFF",
     },
   },
+  // Deep link configuration for OAuth callback
+  android: {
+    allowMixedContent: true,
+  },
 };
 
 export default config;

@@ -1,10 +1,12 @@
 import { GOOGLE_CLIENT_ID } from '@/lib/firebase';
 import { TodoItem } from '@/types/note';
+import { Capacitor } from '@capacitor/core';
 
 const GOOGLE_ACCESS_TOKEN_KEY = 'googleAccessToken';
 const GOOGLE_REFRESH_TOKEN_KEY = 'googleRefreshToken';
 const GOOGLE_TOKEN_EXPIRY_KEY = 'googleTokenExpiry';
 const GOOGLE_CALENDAR_ENABLED_KEY = 'googleCalendarEnabled';
+const GOOGLE_AUTH_RETURN_TO_KEY = 'googleAuthReturnTo';
 
 const SCOPES = [
   'https://www.googleapis.com/auth/calendar.readonly',
@@ -74,8 +76,34 @@ class GoogleCalendarAuth {
     this.setEnabled(false);
   }
 
-  getAuthUrl(): string {
-    const redirectUri = `${window.location.origin}/auth/google/callback`;
+  setReturnTo(path: string): void {
+    localStorage.setItem(GOOGLE_AUTH_RETURN_TO_KEY, path);
+  }
+
+  getReturnTo(): string {
+    return localStorage.getItem(GOOGLE_AUTH_RETURN_TO_KEY) || '/settings';
+  }
+
+  clearReturnTo(): void {
+    localStorage.removeItem(GOOGLE_AUTH_RETURN_TO_KEY);
+  }
+
+  getAuthUrl(returnTo?: string): string {
+    // Store where to return after auth
+    if (returnTo) {
+      this.setReturnTo(returnTo);
+    }
+
+    // Determine the redirect URI based on platform
+    let redirectUri: string;
+    
+    if (Capacitor.isNativePlatform()) {
+      // For native Android/iOS, use the app's custom URL scheme
+      redirectUri = 'app.nota.com://auth/google/callback';
+    } else {
+      // For web, use the current origin
+      redirectUri = `${window.location.origin}/auth/google/callback`;
+    }
     
     const params = new URLSearchParams({
       client_id: GOOGLE_CLIENT_ID,

@@ -15,6 +15,7 @@ import Upcoming from "./pages/todo/Upcoming";
 import TodoCalendar from "./pages/todo/TodoCalendar";
 import TodoSettings from "./pages/todo/TodoSettings";
 import CustomToolDetail from "./pages/todo/CustomToolDetail";
+import GoogleAuthCallback from "./pages/GoogleAuthCallback";
 import NotFound from "./pages/NotFound";
 import { notificationManager } from "@/utils/notifications";
 
@@ -42,6 +43,7 @@ const AppContent = () => {
           <Route path="/todo/calendar" element={<TodoCalendar />} />
           <Route path="/todo/settings" element={<TodoSettings />} />
           <Route path="/todo/tool/:toolId" element={<CustomToolDetail />} />
+          <Route path="/auth/google/callback" element={<GoogleAuthCallback />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
