@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SyncSettings } from '@/components/SyncSettings';
+import { IntegrationSettings } from '@/components/IntegrationSettings';
 
 const Settings = () => {
   const { toast } = useToast();
@@ -144,6 +145,9 @@ const Settings = () => {
         <div className="max-w-2xl mx-auto space-y-6">
           {/* Cloud Sync Section */}
           <SyncSettings />
+          
+          {/* Integrations Section */}
+          <IntegrationSettings variant="notes" />
           
           {/* Settings Items */}
           <div className="space-y-1">

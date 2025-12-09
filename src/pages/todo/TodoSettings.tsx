@@ -9,12 +9,13 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { calendarSyncManager } from '@/utils/calendarSyncManager';
-import { isGoogleCalendarEnabled, GoogleCalendar } from '@/utils/googleCalendar';
+import { googleCalendarAuth, GoogleCalendar } from '@/utils/googleCalendarAuth';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { TodoLayout } from './TodoLayout';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { IntegrationSettings } from '@/components/IntegrationSettings';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -239,11 +240,11 @@ const TodoSettings = () => {
   useEffect(() => {
     const checkCalendarConnection = async () => {
       try {
-        const connected = await isGoogleCalendarEnabled();
-        setIsCalendarConnected(connected);
+        const connected = googleCalendarAuth.isEnabled() && googleCalendarAuth.getAccessToken();
+        setIsCalendarConnected(!!connected);
         if (connected) {
           try {
-            const calendars = await calendarSyncManager.fetchAvailableCalendars();
+            const calendars = await googleCalendarAuth.fetchCalendars();
             setAvailableCalendars(calendars);
           } catch (error) {
             console.error('Failed to fetch calendars:', error);
@@ -297,10 +298,11 @@ const TodoSettings = () => {
   };
 
   const handleCalendarSyncToggle = async (enabled: boolean) => {
-    if (!isCalendarConnected) {
+    const connected = googleCalendarAuth.isEnabled() && googleCalendarAuth.getAccessToken();
+    if (!connected) {
       toast({
         title: 'Google Calendar Not Connected',
-        description: 'Please enable Google Calendar in your account settings.',
+        description: 'Please enable Google Calendar in the Integrations section.',
         variant: 'destructive',
       });
       return;
@@ -344,10 +346,11 @@ const TodoSettings = () => {
   };
 
   const handleImportFromCalendar = async () => {
-    if (!isCalendarConnected) {
+    const connected = googleCalendarAuth.isEnabled() && googleCalendarAuth.getAccessToken();
+    if (!connected) {
       toast({
         title: 'Google Calendar Not Connected',
-        description: 'Please enable Google Calendar first.',
+        description: 'Please connect Google Calendar in the Integrations section.',
         variant: 'destructive',
       });
       return;
@@ -356,12 +359,12 @@ const TodoSettings = () => {
     setIsCalendarSyncing(true);
 
     try {
-      const { tasks, count } = await calendarSyncManager.importFromCalendar();
-      const existingTasks = JSON.parse(localStorage.getItem('todoItems') || '[]');
+      const { tasks, count } = await googleCalendarAuth.importEventsAsTasks(selectedCalendars);
+      const existingTasks = JSON.parse(localStorage.getItem('nota-todo-items') || '[]');
       const existingIds = new Set(existingTasks.map((t: any) => t.googleCalendarEventId));
       const newTasks = tasks.filter(t => !existingIds.has(t.googleCalendarEventId));
       const mergedTasks = [...existingTasks, ...newTasks];
-      localStorage.setItem('todoItems', JSON.stringify(mergedTasks));
+      localStorage.setItem('nota-todo-items', JSON.stringify(mergedTasks));
       window.dispatchEvent(new Event('todoItemsUpdated'));
 
       toast({
@@ -380,10 +383,11 @@ const TodoSettings = () => {
   };
 
   const handleManualCalendarSync = async () => {
-    if (!isCalendarConnected) {
+    const connected = googleCalendarAuth.isEnabled() && googleCalendarAuth.getAccessToken();
+    if (!connected) {
       toast({
         title: 'Google Calendar Not Connected',
-        description: 'Please enable Google Calendar first.',
+        description: 'Please connect Google Calendar in the Integrations section.',
         variant: 'destructive',
       });
       return;
@@ -392,15 +396,17 @@ const TodoSettings = () => {
     setIsCalendarSyncing(true);
 
     try {
-      const existingTasks = JSON.parse(localStorage.getItem('todoItems') || '[]');
-      const result = await calendarSyncManager.syncTwoWay(existingTasks);
-      const updatedTasks = [...existingTasks, ...result.imported];
-      localStorage.setItem('todoItems', JSON.stringify(updatedTasks));
+      const existingTasks = JSON.parse(localStorage.getItem('nota-todo-items') || '[]');
+      const { tasks } = await googleCalendarAuth.importEventsAsTasks(selectedCalendars);
+      const existingIds = new Set(existingTasks.map((t: any) => t.googleCalendarEventId));
+      const newTasks = tasks.filter(t => !existingIds.has(t.googleCalendarEventId));
+      const updatedTasks = [...existingTasks, ...newTasks];
+      localStorage.setItem('nota-todo-items', JSON.stringify(updatedTasks));
       window.dispatchEvent(new Event('todoItemsUpdated'));
 
       toast({
         title: 'Sync Complete',
-        description: `Imported: ${result.imported.length}, Updated: ${result.updated}, Conflicts: ${result.conflicts}`,
+        description: `Imported ${newTasks.length} new events.`,
       });
     } catch (error) {
       toast({
@@ -898,118 +904,8 @@ const TodoSettings = () => {
             </div>
           </div>
 
-          {/* Google Calendar Sync Section */}
-          <div className="bg-card border rounded-lg">
-            <div className="p-4 border-b">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-primary" />
-                <h2 className="font-semibold">Google Calendar</h2>
-              </div>
-            </div>
-
-            <div className="p-4 space-y-4">
-              {!isCalendarConnected ? (
-                <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    Enable Google Calendar integration to sync your tasks with your calendar.
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Calendar sync is not currently connected.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* Calendar Selection */}
-                  <div className="border rounded-lg p-3 space-y-2">
-                    <button
-                      onClick={() => setShowCalendarSelector(!showCalendarSelector)}
-                      className="w-full flex items-center justify-between text-sm font-medium"
-                    >
-                      <span>Selected Calendars ({selectedCalendars.length})</span>
-                      <ChevronRight className={cn(
-                        "h-4 w-4 transition-transform",
-                        showCalendarSelector && "rotate-90"
-                      )} />
-                    </button>
-
-                    {showCalendarSelector && (
-                      <ScrollArea className="h-48 border-t pt-2">
-                        <div className="space-y-2">
-                          {availableCalendars.map((calendar) => (
-                            <div
-                              key={calendar.id}
-                              className="flex items-center space-x-2 p-2 hover:bg-secondary/50 rounded"
-                            >
-                              <Checkbox
-                                id={calendar.id}
-                                checked={selectedCalendars.includes(calendar.id)}
-                                onCheckedChange={() => handleCalendarToggle(calendar.id)}
-                              />
-                              <label
-                                htmlFor={calendar.id}
-                                className="flex-1 text-sm cursor-pointer flex items-center gap-2"
-                              >
-                                <div
-                                  className="w-3 h-3 rounded"
-                                  style={{ backgroundColor: calendar.backgroundColor || '#3b82f6' }}
-                                />
-                                <span>{calendar.summary}</span>
-                                {calendar.primary && (
-                                  <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-                                    Primary
-                                  </span>
-                                )}
-                              </label>
-                            </div>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">Two-Way Sync</p>
-                      <p className="text-xs text-muted-foreground">
-                        Auto-sync every 15 minutes
-                      </p>
-                    </div>
-                    <Switch
-                      checked={calendarSyncEnabled}
-                      onCheckedChange={handleCalendarSyncToggle}
-                    />
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={handleImportFromCalendar}
-                      disabled={isCalendarSyncing || selectedCalendars.length === 0}
-                      variant="outline"
-                      className="flex-1"
-                      size="sm"
-                    >
-                      {isCalendarSyncing ? 'Importing...' : 'Import Events'}
-                    </Button>
-                    <Button
-                      onClick={handleManualCalendarSync}
-                      disabled={isCalendarSyncing || selectedCalendars.length === 0}
-                      variant="outline"
-                      className="flex-1"
-                      size="sm"
-                    >
-                      {isCalendarSyncing ? 'Syncing...' : 'Sync Now'}
-                    </Button>
-                  </div>
-
-                  {calendarSyncManager.getLastSyncTime() && (
-                    <p className="text-xs text-muted-foreground">
-                      Last synced: {calendarSyncManager.getLastSyncTime()?.toLocaleString()}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+          {/* Integrations Section */}
+          <IntegrationSettings variant="todo" />
 
           {/* Settings Items */}
           <div className="space-y-1">
