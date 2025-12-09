@@ -1,0 +1,174 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 142 76% 36%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
+    --radius: 0.75rem;
+
+    /* Sticky Note Colors */
+    --sticky-yellow: 60 100% 81%;
+    --sticky-blue: 197 100% 83%;
+    --sticky-green: 142 85% 84%;
+    --sticky-pink: 330 100% 86%;
+    --sticky-orange: 6 100% 82%;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 217 33% 17%;
+    --card-foreground: 210 40% 98%;
+    --popover: 217 33% 17%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 142 76% 36%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 221 83% 53%;
+
+    --sticky-yellow: 60 100% 70%;
+    --sticky-blue: 197 100% 70%;
+    --sticky-green: 142 85% 70%;
+    --sticky-pink: 330 100% 75%;
+    --sticky-orange: 6 100% 70%;
+  }
+}
+
+@layer components {
+  .sticky-note {
+    @apply relative rounded-lg shadow-lg transform transition-all duration-200 hover:scale-105 hover:shadow-xl;
+    min-width: 260px;
+    min-height: 200px;
+  }
+
+.lined-note {
+  /* Lined paper: darker, aligned, and scrolls with content */
+  --line-gap: 1.75rem; /* distance between lines */
+  --first-line-offset: 1.25rem; /* push first text row to sit on first line */
+  background-color: white !important;
+  background-image: linear-gradient(
+    transparent,
+    transparent calc(var(--line-gap) - 1px),
+    hsl(var(--muted-foreground) / 0.7) calc(var(--line-gap) - 1px),
+    hsl(var(--muted-foreground) / 0.7) var(--line-gap)
+  );
+  background-size: 100% var(--line-gap);
+  background-position: 0 calc(var(--first-line-offset) - 1px);
+  background-origin: padding-box; /* align pattern relative to padding */
+  background-attachment: local; /* lines move with text while scrolling */
+  line-height: var(--line-gap);
+  padding-top: var(--first-line-offset);
+}
+
+.dark .lined-note {
+  background-color: #1a1a1a !important;
+  background-image: linear-gradient(
+    transparent,
+    transparent calc(var(--line-gap) - 1px),
+    hsl(var(--muted-foreground) / 0.7) calc(var(--line-gap) - 1px),
+    hsl(var(--muted-foreground) / 0.7) var(--line-gap)
+  );
+  background-attachment: local;
+}
+
+/* Ensure the editable area aligns perfectly with the first line */
+.rich-text-editor.lined-note {
+  padding-top: var(--first-line-offset) !important;
+}
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-bottom {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-slide-in-bottom {
+  animation: slide-in-bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Safe area utilities for mobile */
+.safe-area-pb {
+  padding-bottom: max(env(safe-area-inset-bottom), 12px);
+}
