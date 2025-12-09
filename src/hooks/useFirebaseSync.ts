@@ -1,16 +1,16 @@
 import { useEffect, useState, useCallback } from 'react';
-import { firebaseSyncManager } from '@/utils/firebaseSync';
+import { realtimeSyncManager } from '@/utils/realtimeSync';
 import { User } from 'firebase/auth';
 
 export const useFirebaseSync = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isSyncing, setIsSyncing] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const [syncEnabled, setSyncEnabledState] = useState(firebaseSyncManager.isSyncEnabled());
-  const [autoSyncEnabled, setAutoSyncState] = useState(firebaseSyncManager.isAutoSyncEnabled());
-  const [lastSync, setLastSync] = useState<Date | null>(firebaseSyncManager.getLastSyncTime());
+  const [syncEnabled, setSyncEnabledState] = useState(realtimeSyncManager.isSyncEnabled());
+  const [autoSyncEnabled, setAutoSyncState] = useState(realtimeSyncManager.isAutoSyncEnabled());
+  const [lastSync, setLastSync] = useState<Date | null>(realtimeSyncManager.getLastSyncTime());
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(firebaseSyncManager.isAuthenticated());
+  const [isAuthenticated, setIsAuthenticated] = useState(realtimeSyncManager.isAuthenticated());
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -26,7 +26,7 @@ export const useFirebaseSync = () => {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = firebaseSyncManager.onAuthChange((user) => {
+    const unsubscribe = realtimeSyncManager.onAuthChange((user) => {
       setUser(user);
       setIsAuthenticated(!!user);
     });
@@ -35,8 +35,8 @@ export const useFirebaseSync = () => {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = firebaseSyncManager.onDataChange(() => {
-      setLastSync(firebaseSyncManager.getLastSyncTime());
+    const unsubscribe = realtimeSyncManager.onDataChange(() => {
+      setLastSync(realtimeSyncManager.getLastSyncTime());
     });
 
     return () => unsubscribe();
@@ -46,10 +46,10 @@ export const useFirebaseSync = () => {
     setIsSyncing(true);
     setHasError(false);
 
-    const result = await firebaseSyncManager.signUp(email, password);
+    const result = await realtimeSyncManager.signUp(email, password);
     
     if (result.success) {
-      firebaseSyncManager.setSyncEnabled(true);
+      realtimeSyncManager.setSyncEnabled(true);
       setSyncEnabledState(true);
       setIsAuthenticated(true);
     } else {
@@ -64,13 +64,13 @@ export const useFirebaseSync = () => {
     setIsSyncing(true);
     setHasError(false);
 
-    const result = await firebaseSyncManager.signIn(email, password);
+    const result = await realtimeSyncManager.signIn(email, password);
     
     if (result.success) {
-      firebaseSyncManager.setSyncEnabled(true);
+      realtimeSyncManager.setSyncEnabled(true);
       setSyncEnabledState(true);
       setIsAuthenticated(true);
-      await firebaseSyncManager.pullAllData();
+      await realtimeSyncManager.pullAllData();
     } else {
       setHasError(true);
     }
@@ -80,7 +80,7 @@ export const useFirebaseSync = () => {
   }, []);
 
   const signOut = useCallback(async () => {
-    await firebaseSyncManager.signOut();
+    await realtimeSyncManager.signOut();
     setSyncEnabledState(false);
     setIsAuthenticated(false);
     setUser(null);
@@ -92,20 +92,20 @@ export const useFirebaseSync = () => {
     setIsSyncing(true);
     setHasError(false);
 
-    firebaseSyncManager.setSyncEnabled(true);
+    realtimeSyncManager.setSyncEnabled(true);
     setSyncEnabledState(true);
-    await firebaseSyncManager.syncAllData();
+    await realtimeSyncManager.syncAllData();
 
     setIsSyncing(false);
   }, [isAuthenticated]);
 
   const disableSync = useCallback(() => {
-    firebaseSyncManager.setSyncEnabled(false);
+    realtimeSyncManager.setSyncEnabled(false);
     setSyncEnabledState(false);
   }, []);
 
   const setAutoSync = useCallback((enabled: boolean) => {
-    firebaseSyncManager.setAutoSyncEnabled(enabled);
+    realtimeSyncManager.setAutoSyncEnabled(enabled);
     setAutoSyncState(enabled);
   }, []);
 
@@ -115,12 +115,12 @@ export const useFirebaseSync = () => {
     setIsSyncing(true);
     setHasError(false);
 
-    const result = await firebaseSyncManager.syncAllData();
+    const result = await realtimeSyncManager.syncAllData();
     
     if (!result.success) {
       setHasError(true);
     } else {
-      setLastSync(firebaseSyncManager.getLastSyncTime());
+      setLastSync(realtimeSyncManager.getLastSyncTime());
     }
 
     setIsSyncing(false);
@@ -132,20 +132,19 @@ export const useFirebaseSync = () => {
     setIsSyncing(true);
     setHasError(false);
 
-    const result = await firebaseSyncManager.pullAllData();
+    const result = await realtimeSyncManager.pullAllData();
     
     if (!result.success) {
       setHasError(true);
     } else {
-      setLastSync(firebaseSyncManager.getLastSyncTime());
+      setLastSync(realtimeSyncManager.getLastSyncTime());
     }
 
     setIsSyncing(false);
   }, [syncEnabled, isAuthenticated]);
 
-  // Trigger auto-sync
   const triggerAutoSync = useCallback(() => {
-    firebaseSyncManager.triggerAutoSync();
+    realtimeSyncManager.triggerAutoSync();
   }, []);
 
   return {
@@ -157,7 +156,7 @@ export const useFirebaseSync = () => {
     lastSync,
     user,
     isAuthenticated,
-    userEmail: firebaseSyncManager.getUserEmail(),
+    userEmail: realtimeSyncManager.getUserEmail(),
     signUp,
     signIn,
     signOut,
