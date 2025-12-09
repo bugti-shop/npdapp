@@ -3,25 +3,30 @@ import {
   collection, 
   doc, 
   setDoc, 
-  getDoc, 
   getDocs, 
   deleteDoc,
   writeBatch,
   onSnapshot,
   Unsubscribe
 } from 'firebase/firestore';
-import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  User
+} from 'firebase/auth';
 
 const STORAGE_KEYS = {
-  NOTES: 'nota-notes',
-  FOLDERS: 'nota-folders',
+  NOTES: 'notes',
+  FOLDERS: 'folders',
   TODO_ITEMS: 'nota-todo-items',
   SYNC_ENABLED: 'firebase-sync-enabled',
   DEVICE_ID: 'firebase-device-id',
   LAST_SYNC: 'firebase-last-sync',
+  AUTO_SYNC: 'firebase-auto-sync',
 };
 
-// Generate unique device ID
 const getDeviceId = (): string => {
   let deviceId = localStorage.getItem(STORAGE_KEYS.DEVICE_ID);
   if (!deviceId) {
@@ -34,8 +39,11 @@ const getDeviceId = (): string => {
 class FirebaseSyncManager {
   private static instance: FirebaseSyncManager;
   private userId: string | null = null;
+  private userEmail: string | null = null;
   private unsubscribers: Unsubscribe[] = [];
   private syncListeners: ((data: any) => void)[] = [];
+  private authListeners: ((user: User | null) => void)[] = [];
+  private syncDebounceTimer: NodeJS.Timeout | null = null;
 
   private constructor() {
     this.initAuth();
@@ -48,28 +56,76 @@ class FirebaseSyncManager {
     return FirebaseSyncManager.instance;
   }
 
-  private async initAuth() {
+  private initAuth() {
     onAuthStateChanged(auth, (user) => {
       if (user) {
         this.userId = user.uid;
+        this.userEmail = user.email;
         if (this.isSyncEnabled()) {
           this.setupRealtimeListeners();
         }
       } else {
         this.userId = null;
+        this.userEmail = null;
+        this.cleanup();
       }
+      this.authListeners.forEach(cb => cb(user));
     });
   }
 
-  async signIn(): Promise<boolean> {
-    try {
-      const result = await signInAnonymously(auth);
-      this.userId = result.user.uid;
-      return true;
-    } catch (error) {
-      console.error('Firebase sign in error:', error);
-      return false;
+  onAuthChange(callback: (user: User | null) => void) {
+    this.authListeners.push(callback);
+    // Immediately call with current state
+    if (auth.currentUser) {
+      callback(auth.currentUser);
     }
+    return () => {
+      this.authListeners = this.authListeners.filter(cb => cb !== callback);
+    };
+  }
+
+  async signUp(email: string, password: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      this.userId = result.user.uid;
+      this.userEmail = result.user.email;
+      return { success: true };
+    } catch (error: any) {
+      console.error('Firebase sign up error:', error);
+      return { success: false, error: error.message || 'Sign up failed' };
+    }
+  }
+
+  async signIn(email: string, password: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      this.userId = result.user.uid;
+      this.userEmail = result.user.email;
+      return { success: true };
+    } catch (error: any) {
+      console.error('Firebase sign in error:', error);
+      return { success: false, error: error.message || 'Sign in failed' };
+    }
+  }
+
+  async signOut(): Promise<void> {
+    try {
+      await firebaseSignOut(auth);
+      this.userId = null;
+      this.userEmail = null;
+      this.cleanup();
+      this.setSyncEnabled(false);
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  }
+
+  isAuthenticated(): boolean {
+    return this.userId !== null;
+  }
+
+  getUserEmail(): string | null {
+    return this.userEmail;
   }
 
   isSyncEnabled(): boolean {
@@ -78,11 +134,19 @@ class FirebaseSyncManager {
 
   setSyncEnabled(enabled: boolean) {
     localStorage.setItem(STORAGE_KEYS.SYNC_ENABLED, enabled.toString());
-    if (enabled) {
+    if (enabled && this.userId) {
       this.setupRealtimeListeners();
     } else {
       this.cleanup();
     }
+  }
+
+  isAutoSyncEnabled(): boolean {
+    return localStorage.getItem(STORAGE_KEYS.AUTO_SYNC) !== 'false';
+  }
+
+  setAutoSyncEnabled(enabled: boolean) {
+    localStorage.setItem(STORAGE_KEYS.AUTO_SYNC, enabled.toString());
   }
 
   getLastSyncTime(): Date | null {
@@ -105,12 +169,24 @@ class FirebaseSyncManager {
     this.syncListeners.forEach(cb => cb(data));
   }
 
+  // Debounced auto-sync
+  triggerAutoSync() {
+    if (!this.isSyncEnabled() || !this.isAutoSyncEnabled() || !this.userId) return;
+    
+    if (this.syncDebounceTimer) {
+      clearTimeout(this.syncDebounceTimer);
+    }
+    
+    this.syncDebounceTimer = setTimeout(() => {
+      this.syncAllData();
+    }, 2000); // 2 second debounce
+  }
+
   private setupRealtimeListeners() {
     if (!this.userId) return;
     
     this.cleanup();
 
-    // Listen to notes
     const notesRef = collection(db, 'users', this.userId, 'notes');
     const notesUnsub = onSnapshot(notesRef, (snapshot) => {
       const notes: any[] = [];
@@ -122,7 +198,6 @@ class FirebaseSyncManager {
     });
     this.unsubscribers.push(notesUnsub);
 
-    // Listen to folders
     const foldersRef = collection(db, 'users', this.userId, 'folders');
     const foldersUnsub = onSnapshot(foldersRef, (snapshot) => {
       const folders: any[] = [];
@@ -134,7 +209,6 @@ class FirebaseSyncManager {
     });
     this.unsubscribers.push(foldersUnsub);
 
-    // Listen to todos
     const todosRef = collection(db, 'users', this.userId, 'todos');
     const todosUnsub = onSnapshot(todosRef, (snapshot) => {
       const todos: any[] = [];
@@ -154,19 +228,16 @@ class FirebaseSyncManager {
 
   async syncAllData(): Promise<{ success: boolean; error?: string }> {
     if (!this.userId) {
-      const signedIn = await this.signIn();
-      if (!signedIn) {
-        return { success: false, error: 'Failed to authenticate' };
-      }
+      return { success: false, error: 'Not authenticated' };
     }
 
     try {
-      // Push local data to Firebase
       await this.pushNotes();
       await this.pushFolders();
       await this.pushTodos();
       
       this.setLastSyncTime();
+      this.notifyListeners({ type: 'sync_complete' });
       return { success: true };
     } catch (error) {
       console.error('Sync error:', error);
@@ -239,31 +310,25 @@ class FirebaseSyncManager {
 
   async pullAllData(): Promise<{ success: boolean; error?: string }> {
     if (!this.userId) {
-      const signedIn = await this.signIn();
-      if (!signedIn) {
-        return { success: false, error: 'Failed to authenticate' };
-      }
+      return { success: false, error: 'Not authenticated' };
     }
 
     try {
-      // Pull notes
-      const notesSnapshot = await getDocs(collection(db, 'users', this.userId!, 'notes'));
+      const notesSnapshot = await getDocs(collection(db, 'users', this.userId, 'notes'));
       const notes: any[] = [];
       notesSnapshot.forEach((doc) => {
         notes.push({ id: doc.id, ...doc.data() });
       });
       localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(notes));
 
-      // Pull folders
-      const foldersSnapshot = await getDocs(collection(db, 'users', this.userId!, 'folders'));
+      const foldersSnapshot = await getDocs(collection(db, 'users', this.userId, 'folders'));
       const folders: any[] = [];
       foldersSnapshot.forEach((doc) => {
         folders.push({ id: doc.id, ...doc.data() });
       });
       localStorage.setItem(STORAGE_KEYS.FOLDERS, JSON.stringify(folders));
 
-      // Pull todos
-      const todosSnapshot = await getDocs(collection(db, 'users', this.userId!, 'todos'));
+      const todosSnapshot = await getDocs(collection(db, 'users', this.userId, 'todos'));
       const todos: any[] = [];
       todosSnapshot.forEach((doc) => {
         todos.push({ id: doc.id, ...doc.data() });
