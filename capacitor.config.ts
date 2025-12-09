@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.c4920824037c4205bb9ed6cc0d5a0385',
+  appId: 'app.npd.com',
   appName: 'Npd',
   webDir: 'dist',
   server: {
