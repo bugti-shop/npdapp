@@ -8,7 +8,7 @@ const firebaseConfig = {
   projectId: "npd-all-in-one-notepad",
   storageBucket: "npd-all-in-one-notepad.firebasestorage.app",
   messagingSenderId: "425291387152",
-  appId: "1:425291387152:android:f8e73be24215b8ba411595"
+  appId: "1:425291387152:android:4f943b700a1c6186411595"
 };
 
 export const app = initializeApp(firebaseConfig);
