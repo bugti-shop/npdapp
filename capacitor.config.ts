@@ -1,20 +1,25 @@
-import { CapacitorConfig } from '@capacitor/cli';
+import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'app.nota.com',
   appName: 'Npd',
   webDir: 'dist',
-  server: {
-    url: 'https://c4920824-037c-4205-bb9e-d6cc0d5a0385.lovableproject.com?forceHideBadge=true',
-    cleartext: true
-  },
+  // Comment out server block for production build (local assets)
+  // Uncomment for live reload during development
+  // server: {
+  //   url: 'https://70d65a03-2074-4d6a-9764-003436c73c92.lovableproject.com?forceHideBadge=true',
+  //   cleartext: true
+  // },
   plugins: {
     LocalNotifications: {
-      smallIcon: "ic_stat_icon_config_sample",
-      iconColor: "#488AFF",
+      smallIcon: 'ic_stat_icon',
+      iconColor: '#4F46E5',
+      sound: 'notification.wav'
     },
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'alert']
+    }
   },
-  // Deep link configuration for OAuth callback
   android: {
     allowMixedContent: true,
   },
