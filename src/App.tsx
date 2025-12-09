@@ -18,12 +18,17 @@ import CustomToolDetail from "./pages/todo/CustomToolDetail";
 import GoogleAuthCallback from "./pages/GoogleAuthCallback";
 import NotFound from "./pages/NotFound";
 import { notificationManager } from "@/utils/notifications";
+import { pushNotificationService } from "@/utils/pushNotifications";
 
 const queryClient = new QueryClient();
 
 const AppContent = () => {
   useEffect(() => {
+    // Initialize local notifications
     notificationManager.initialize().catch(console.error);
+    
+    // Initialize push notifications (for native platforms)
+    pushNotificationService.initialize().catch(console.error);
   }, []);
 
   return (

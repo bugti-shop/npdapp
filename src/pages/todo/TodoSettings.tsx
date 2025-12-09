@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { TodoLayout } from './TodoLayout';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { IntegrationSettings } from '@/components/IntegrationSettings';
+import { PushNotificationSettings } from '@/components/PushNotificationSettings';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -903,6 +904,9 @@ const TodoSettings = () => {
               )}
             </div>
           </div>
+
+          {/* Push Notifications Section */}
+          <PushNotificationSettings />
 
           {/* Integrations Section */}
           <IntegrationSettings variant="todo" />
