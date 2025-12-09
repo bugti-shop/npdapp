@@ -21,24 +21,11 @@ export const IntegrationSettings = ({ variant = 'notes' }: IntegrationSettingsPr
   const [isImporting, setIsImporting] = useState(false);
 
   useEffect(() => {
-    // Check for OAuth callback
-    if (window.location.hash.includes('access_token')) {
-      const success = googleCalendarAuth.handleAuthCallback();
-      if (success) {
-        setIsConnected(true);
-        loadCalendars();
-        toast({
-          title: 'Google Calendar Connected',
-          description: 'Successfully connected to your Google Calendar.',
-        });
-      }
-    } else {
-      // Check existing connection
-      const connected = googleCalendarAuth.isEnabled() && googleCalendarAuth.getAccessToken();
-      setIsConnected(!!connected);
-      if (connected) {
-        loadCalendars();
-      }
+    // Check existing connection
+    const connected = googleCalendarAuth.isEnabled() && googleCalendarAuth.getAccessToken();
+    setIsConnected(!!connected);
+    if (connected) {
+      loadCalendars();
     }
 
     // Load saved preferences
@@ -53,7 +40,28 @@ export const IntegrationSettings = ({ variant = 'notes' }: IntegrationSettingsPr
 
     const savedAutoSync = localStorage.getItem('googleCalendarAutoSync');
     setAutoSyncEnabled(savedAutoSync === 'true');
-  }, []);
+
+    // Listen for connection updates
+    const handleStorageChange = () => {
+      const nowConnected = googleCalendarAuth.isEnabled() && googleCalendarAuth.getAccessToken();
+      if (nowConnected && !isConnected) {
+        setIsConnected(true);
+        loadCalendars();
+        toast({
+          title: 'Google Calendar Connected',
+          description: 'Successfully connected to your Google Calendar.',
+        });
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('focus', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleStorageChange);
+    };
+  }, [isConnected]);
 
   const loadCalendars = async () => {
     try {
@@ -68,7 +76,8 @@ export const IntegrationSettings = ({ variant = 'notes' }: IntegrationSettingsPr
   };
 
   const handleConnect = () => {
-    const authUrl = googleCalendarAuth.getAuthUrl();
+    const returnPath = variant === 'todo' ? '/todo/settings' : '/settings';
+    const authUrl = googleCalendarAuth.getAuthUrl(returnPath);
     window.location.href = authUrl;
   };
 
