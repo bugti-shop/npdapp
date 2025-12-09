@@ -19,11 +19,16 @@ import GoogleAuthCallback from "./pages/GoogleAuthCallback";
 import NotFound from "./pages/NotFound";
 import { notificationManager } from "@/utils/notifications";
 import { pushNotificationService } from "@/utils/pushNotifications";
+import { offlineStorage } from "@/utils/offlineStorage";
+import { OfflineBanner } from "@/components/OfflineIndicator";
 
 const queryClient = new QueryClient();
 
 const AppContent = () => {
   useEffect(() => {
+    // Initialize offline storage
+    offlineStorage.initialize().catch(console.error);
+    
     // Initialize local notifications
     notificationManager.initialize().catch(console.error);
     
@@ -33,6 +38,7 @@ const AppContent = () => {
 
   return (
     <>
+      <OfflineBanner />
       <Toaster />
       <Sonner />
       <BrowserRouter>
