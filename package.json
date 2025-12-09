@@ -57,6 +57,7 @@
     "docx": "^9.5.1",
     "embla-carousel-react": "^8.6.0",
     "file-saver": "^2.0.5",
+    "firebase": "^12.6.0",
     "highlight.js": "^11.11.1",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.462.0",

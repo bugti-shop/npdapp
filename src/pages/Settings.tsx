@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { SyncSettings } from '@/components/SyncSettings';
 
 const Settings = () => {
   const { toast } = useToast();
@@ -141,6 +142,9 @@ const Settings = () => {
       </header>
       <main className="container mx-auto px-4 py-6">
         <div className="max-w-2xl mx-auto space-y-6">
+          {/* Cloud Sync Section */}
+          <SyncSettings />
+          
           {/* Settings Items */}
           <div className="space-y-1">
           {settingsItems.map((item, index) => (
